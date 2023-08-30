@@ -72,12 +72,11 @@ class SquadExample(object):
 
     def __repr__(self):
         s = ""
-        s += "qas_id: %s" % (self.qas_id)
-        s += ", question_text: %s" % (self.question_text)
-        s += ", doc_tokens: [%s]" % (" ".join(self.doc_tokens))
+        s += f"qas_id: {self.qas_id}"
+        s += f", question_text: {self.question_text}"
+        s += f', doc_tokens: [{" ".join(self.doc_tokens)}]'
         if self.start_position:
             s += ", start_position: %d" % (self.start_position)
-        if self.start_position:
             s += ", end_position: %d" % (self.end_position)
         return s
 
@@ -115,9 +114,7 @@ def read_squad_examples(input_file, is_training):
         input_data = json.load(reader)["data"]
 
     def is_whitespace(c):
-        if c == " " or c == "\t" or c == "\r" or c == "\n" or ord(c) == 0x202F:
-            return True
-        return False
+        return c == " " or c == "\t" or c == "\r" or c == "\n" or ord(c) == 0x202F
 
     examples = []
     for entry in input_data:
@@ -165,7 +162,7 @@ def read_squad_examples(input_file, is_training):
                         doc_tokens[start_position:(end_position + 1)])
                     cleaned_answer_text = " ".join(
                         whitespace_tokenize(orig_answer_text))
-                    if actual_text.find(cleaned_answer_text) == -1:
+                    if cleaned_answer_text not in actual_text:
                         logger.warning("Could not find answer: '%s' vs. '%s'",
                                        actual_text, cleaned_answer_text)
                         continue
@@ -184,14 +181,13 @@ def convert_examples_to_features(examples, tokenizer, max_seq_length,
                                  doc_stride, max_query_length, is_training):
     """Loads a data file into a list of `InputBatch`s."""
 
-    unique_id = 1000000000
-
     features = []
-    for (example_index, example) in enumerate(examples):
+    unique_id = 1000000000
+    for example_index, example in enumerate(examples):
         query_tokens = tokenizer.tokenize(example.question_text)
 
         if len(query_tokens) > max_query_length:
-            query_tokens = query_tokens[0:max_query_length]
+            query_tokens = query_tokens[:max_query_length]
 
         tok_to_orig_index = []
         orig_to_tok_index = []
@@ -228,20 +224,17 @@ def convert_examples_to_features(examples, tokenizer, max_seq_length,
         start_offset = 0
         while start_offset < len(all_doc_tokens):
             length = len(all_doc_tokens) - start_offset
-            if length > max_tokens_for_doc:
-                length = max_tokens_for_doc
+            length = min(length, max_tokens_for_doc)
             doc_spans.append(_DocSpan(start=start_offset, length=length))
             if start_offset + length == len(all_doc_tokens):
                 break
             start_offset += min(length, doc_stride)
 
-        for (doc_span_index, doc_span) in enumerate(doc_spans):
-            tokens = []
+        for doc_span_index, doc_span in enumerate(doc_spans):
             token_to_orig_map = {}
             token_is_max_context = {}
-            segment_ids = []
-            tokens.append("[CLS]")
-            segment_ids.append(0)
+            tokens = ["[CLS]"]
+            segment_ids = [0]
             for token in query_tokens:
                 tokens.append(token)
                 segment_ids.append(0)
@@ -297,29 +290,25 @@ def convert_examples_to_features(examples, tokenizer, max_seq_length,
 
             if example_index < 20:
                 logger.info("*** Example ***")
-                logger.info("unique_id: %s" % (unique_id))
-                logger.info("example_index: %s" % (example_index))
-                logger.info("doc_span_index: %s" % (doc_span_index))
-                logger.info("tokens: %s" % " ".join(tokens))
-                logger.info("token_to_orig_map: %s" % " ".join(
-                    ["%d:%d" % (x, y)
-                     for (x, y) in token_to_orig_map.items()]))
-                logger.info("token_is_max_context: %s" % " ".join([
-                    "%d:%s" % (x, y)
-                    for (x, y) in token_is_max_context.items()
-                ]))
-                logger.info("input_ids: %s" %
-                            " ".join([str(x) for x in input_ids]))
-                logger.info("input_mask: %s" %
-                            " ".join([str(x) for x in input_mask]))
-                logger.info("segment_ids: %s" %
-                            " ".join([str(x) for x in segment_ids]))
+                logger.info(f"unique_id: {unique_id}")
+                logger.info(f"example_index: {example_index}")
+                logger.info(f"doc_span_index: {doc_span_index}")
+                logger.info(f'tokens: {" ".join(tokens)}')
+                logger.info(
+                    f'token_to_orig_map: {" ".join(["%d:%d" % (x, y) for x, y in token_to_orig_map.items()])}'
+                )
+                logger.info(
+                    f'token_is_max_context: {" ".join(["%d:%s" % (x, y) for x, y in token_is_max_context.items()])}'
+                )
+                logger.info(f'input_ids: {" ".join([str(x) for x in input_ids])}')
+                logger.info(f'input_mask: {" ".join([str(x) for x in input_mask])}')
+                logger.info(f'segment_ids: {" ".join([str(x) for x in segment_ids])}')
                 if is_training:
                     answer_text = " ".join(
                         tokens[start_position:(end_position + 1)])
                     logger.info("start_position: %d" % (start_position))
                     logger.info("end_position: %d" % (end_position))
-                    logger.info("answer: %s" % (answer_text))
+                    logger.info(f"answer: {answer_text}")
 
             features.append(
                 InputFeatures(unique_id=unique_id,

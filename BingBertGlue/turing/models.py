@@ -30,17 +30,15 @@ class BertPretrainingLoss(PreTrainedBertModel):
         prediction_scores, seq_relationship_score = self.cls(
             sequence_output, pooled_output)
 
-        if masked_lm_labels is not None and next_sentence_label is not None:
-            loss_fct = CrossEntropyLoss(ignore_index=-1)
-            next_sentence_loss = loss_fct(seq_relationship_score.view(-1, 2),
-                                          next_sentence_label.view(-1))
-            masked_lm_loss = loss_fct(
-                prediction_scores.view(-1, self.config.vocab_size),
-                masked_lm_labels.view(-1))
-            total_loss = masked_lm_loss + next_sentence_loss
-            return total_loss
-        else:
+        if masked_lm_labels is None or next_sentence_label is None:
             return prediction_scores, seq_relationship_score
+        loss_fct = CrossEntropyLoss(ignore_index=-1)
+        next_sentence_loss = loss_fct(seq_relationship_score.view(-1, 2),
+                                      next_sentence_label.view(-1))
+        masked_lm_loss = loss_fct(
+            prediction_scores.view(-1, self.config.vocab_size),
+            masked_lm_labels.view(-1))
+        return masked_lm_loss + next_sentence_loss
 
 
 class BertClassificationLoss(PreTrainedBertModel):
@@ -65,9 +63,7 @@ class BertClassificationLoss(PreTrainedBertModel):
         scores = self.classifier(pooled_output)
         if labels is not None:
             loss_fct = nn.BCEWithLogitsLoss()
-            loss = loss_fct(scores.view(-1, self.num_labels),
-                            labels.view(-1, 1))
-            return loss
+            return loss_fct(scores.view(-1, self.num_labels), labels.view(-1, 1))
         else:
             return scores
 
@@ -92,12 +88,10 @@ class BertRegressionLoss(PreTrainedBertModel):
         pooled_output = self.dropout(pooled_output)
         logits = self.classifier(pooled_output)
 
-        if labels is not None:
-            loss_fct = MSELoss()
-            loss = loss_fct(logits.view(-1, 1), labels.view(-1, 1))
-            return loss
-        else:
+        if labels is None:
             return logits
+        loss_fct = MSELoss()
+        return loss_fct(logits.view(-1, 1), labels.view(-1, 1))
 
 
 class BertMultiTask:
@@ -121,12 +115,14 @@ class BertMultiTask:
             print("VOCAB SIZE:", bert_config.vocab_size)
 
             self.network = BertForPreTrainingPreLN(bert_config, args)
-        # Use pretrained bert weights
         else:
             self.bert_encoder = BertModel.from_pretrained(
                 self.config['bert_model_file'],
-                cache_dir=PYTORCH_PRETRAINED_BERT_CACHE /
-                'distributed_{}'.format(args.local_rank))
+                cache_dir=(
+                    PYTORCH_PRETRAINED_BERT_CACHE
+                    / f'distributed_{args.local_rank}'
+                ),
+            )
             bert_config = self.bert_encoder.config
 
         self.device = None

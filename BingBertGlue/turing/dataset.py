@@ -153,21 +153,23 @@ class QADataset(Dataset):
         passage_tokens = self.tokenizer.tokenize(passage)
 
         if (len(query_tokens) > self.max_seq_len // 2):
-            query_tokens = query_tokens[0:self.max_seq_len // 2]
+            query_tokens = query_tokens[:self.max_seq_len // 2]
 
         max_passage_tokens = self.max_seq_len - \
-            len(query_tokens) - 3  # Removing 3 for SEP and CLS
+                len(query_tokens) - 3  # Removing 3 for SEP and CLS
 
         if (len(passage_tokens) > max_passage_tokens):
-            passage_tokens = passage_tokens[0:max_passage_tokens]
+            passage_tokens = passage_tokens[:max_passage_tokens]
 
         input_ids, input_mask, sequence_ids = encode_sequence(
             query_tokens, passage_tokens, self.max_seq_len, self.tokenizer)
-        return tuple([
-            map_to_torch([BatchType.QP_BATCH]), input_ids, input_mask,
+        return (
+            map_to_torch([BatchType.QP_BATCH]),
+            input_ids,
+            input_mask,
             sequence_ids,
-            map_to_torch_float([label])
-        ])
+            map_to_torch_float([label]),
+        )
         # return QABatch(input_ids=input_ids, input_mask=input_mask, sequence_ids=sequence_ids, label=map_to_torch([label]))
 
 
@@ -232,21 +234,23 @@ class RankingDataset(Dataset):
         # instance_tokens = self.tokenizer.tokenize(instance)
 
         if (len(query_tokens) > self.max_seq_len // 2):
-            query_tokens = query_tokens[0:self.max_seq_len // 2]
+            query_tokens = query_tokens[:self.max_seq_len // 2]
 
         max_instance_tokens = self.max_seq_len - \
-            len(query_tokens) - 3  # Removing 3 for SEP and CLS
+                len(query_tokens) - 3  # Removing 3 for SEP and CLS
 
         if (len(instance_tokens) > max_instance_tokens):
-            instance_tokens = instance_tokens[0:max_instance_tokens]
+            instance_tokens = instance_tokens[:max_instance_tokens]
 
         input_ids, input_mask, sequence_ids = encode_sequence(
             query_tokens, instance_tokens, self.max_seq_len, self.tokenizer)
-        return tuple([
-            map_to_torch([BatchType.RANKING_BATCH]), input_ids, input_mask,
+        return (
+            map_to_torch([BatchType.RANKING_BATCH]),
+            input_ids,
+            input_mask,
             sequence_ids,
-            map_to_torch_float([label])
-        ])
+            map_to_torch_float([label]),
+        )
 
 
 class PreTrainingDataset(Dataset):
@@ -300,12 +304,8 @@ class PreTrainingDataset(Dataset):
 
     def create_training_instance(self, instance: TokenInstance):
         tokens_a, tokens_b, is_next = instance.get_values()
-        # print(f'is_next label:{is_next}')
-        # Create mapper
-        tokens = []
-        segment_ids = []
-        tokens.append("[CLS]")
-        segment_ids.append(0)
+        tokens = ["[CLS]"]
+        segment_ids = [0]
         for token in tokens_a:
             tokens.append(token)
             segment_ids.append(0)
@@ -342,12 +342,9 @@ class PreTrainingDataset(Dataset):
         ])
 
     def create_masked_lm_predictions(self, tokens):
-        cand_indexes = []
-        for i, token in enumerate(tokens):
-            if token == "[CLS]" or token == "[SEP]":
-                continue
-            cand_indexes.append(i)
-
+        cand_indexes = [
+            i for i, token in enumerate(tokens) if token not in ["[CLS]", "[SEP]"]
+        ]
         random.shuffle(cand_indexes)
         output_tokens = list(tokens)
 
@@ -368,15 +365,12 @@ class PreTrainingDataset(Dataset):
             # 80% mask
             if random.random() < 0.8:
                 masked_token = "[MASK]"
+            elif random.random() < 0.5:
+                masked_token = tokens[index]
             else:
-                # 10% Keep Original
-                if random.random() < 0.5:
-                    masked_token = tokens[index]
-                # 10% replace w/ random word
-                else:
-                    masked_token = self.vocab_words[random.randint(
-                        0,
-                        len(self.vocab_words) - 1)]
+                masked_token = self.vocab_words[random.randint(
+                    0,
+                    len(self.vocab_words) - 1)]
 
             output_tokens[index] = masked_token
             masked_lms.append(

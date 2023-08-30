@@ -149,7 +149,7 @@ def namedtorchbatch(typename: str,
 
     # Execute the template string in a temporary namespace and support
     # tracing utilities by setting a value for frame.f_globals['__name__']
-    namespace = dict(__name__='namedtuple_%s' % typename)
+    namespace = dict(__name__=f'namedtuple_{typename}')
     exec(class_definition, namespace)
     result = namespace[typename]
     result._source = class_definition  # type: ignore
