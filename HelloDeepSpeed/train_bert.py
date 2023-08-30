@@ -348,9 +348,7 @@ class RobertaMLMModel(RobertaPreTrainedModel):
 
         loss_fct = nn.CrossEntropyLoss(ignore_index=-1)
 
-        masked_lm_loss = loss_fct(
-            prediction_scores.view(-1, self.config.vocab_size), target)
-        return masked_lm_loss
+        return loss_fct(prediction_scores.view(-1, self.config.vocab_size), target)
 
 
 def create_model(num_layers: int, num_heads: int, ff_dim: int, h_dim: int,
@@ -401,8 +399,7 @@ def create_model(num_layers: int, num_heads: int, ff_dim: int, h_dim: int,
     }
     roberta_config = RobertaConfig.from_dict(roberta_config_dict)
     roberta_encoder = RobertaModel(roberta_config)
-    roberta_model = RobertaMLMModel(roberta_config, roberta_encoder)
-    return roberta_model
+    return RobertaMLMModel(roberta_config, roberta_encoder)
 
 
 ######################################################################
@@ -415,9 +412,9 @@ def get_unique_identifier(length: int = 8) -> str:
     random characters from list of ascii characters and numbers
     """
     alphabet = string.ascii_lowercase + string.digits
-    uuid = "".join(alphabet[ix]
-                   for ix in np.random.choice(len(alphabet), length))
-    return uuid
+    return "".join(
+        alphabet[ix] for ix in np.random.choice(len(alphabet), length)
+    )
 
 
 def create_experiment_dir(checkpoint_dir: pathlib.Path,
@@ -523,7 +520,7 @@ def load_model_checkpoint(
             not None,
             load_checkpoint_dir.glob("*.pt"),
         ))
-    assert len(checkpoint_files) > 0, "No checkpoints found in directory"
+    assert checkpoint_files, "No checkpoints found in directory"
     checkpoint_files = sorted(
         checkpoint_files,
         key=lambda path: int(
@@ -738,7 +735,7 @@ def train(
     ####### The Training Loop ######
     ################################
     logger.info(
-        f"Total number of model parameters: {sum([p.numel() for p in model.parameters()]):,d}"
+        f"Total number of model parameters: {sum(p.numel() for p in model.parameters()):,d}"
     )
     model.train()
     losses = []
@@ -758,7 +755,7 @@ def train(
         losses.append(loss.item())
         if step % log_every == 0:
             logger.info("Loss: {0:.4f}".format(np.mean(losses)))
-            summary_writer.add_scalar(f"Train/loss", np.mean(losses), step)
+            summary_writer.add_scalar("Train/loss", np.mean(losses), step)
         if step % checkpoint_every == 0:
             state_dict = {
                 "model": model.state_dict(),

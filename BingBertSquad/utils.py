@@ -246,9 +246,10 @@ def check_early_exit_warning(args):
     # Issue warning if early exit from epoch is configured
     if args.max_steps < sys.maxsize:
         logging.warning(
-            'Early training exit is set after {} global steps'.format(
-                args.max_steps))
+            f'Early training exit is set after {args.max_steps} global steps'
+        )
 
     if args.max_steps_per_epoch < sys.maxsize:
-        logging.warning('Early epoch exit is set after {} global steps'.format(
-            args.max_steps_per_epoch))
+        logging.warning(
+            f'Early epoch exit is set after {args.max_steps_per_epoch} global steps'
+        )

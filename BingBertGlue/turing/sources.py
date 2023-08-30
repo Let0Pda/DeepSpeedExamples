@@ -117,7 +117,7 @@ class PretrainingDataCreator:
         documents = []
         instances = []
         with open(path, encoding='utf-8') as fd:
-            for i, line in enumerate(tqdm(fd)):
+            for line in tqdm(fd):
                 line = line.replace('\n', '')
                 # Expected format (Q,T,U,S,D)
                 # query, title, url, snippet, document = line.split('\t')
@@ -126,9 +126,7 @@ class PretrainingDataCreator:
                 if len(document.split("<sep>")) <= 3:
                     continue
                 lines = document.split("<sep>")
-                document = []
-                for seq in lines:
-                    document.append(tokenizer.tokenize(seq))
+                document = [tokenizer.tokenize(seq) for seq in lines]
                 # document = list(map(tokenizer.tokenize, lines))
                 documents.append(document)
 
@@ -149,8 +147,7 @@ class PretrainingDataCreator:
         return self.len
 
     def __getstate__(self):
-        state = self.__dict__.copy()
-        return state
+        return self.__dict__.copy()
 
     def __setstate__(self, state):
         self.__dict__.update(state)
@@ -241,12 +238,12 @@ class PretrainingDataCreator:
 
                     truncate_input_sequence(tokens_a, tokens_b, max_num_tokens)
 
-                    assert len(tokens_a) >= 1
-                    assert len(tokens_b) >= 1
+                    assert tokens_a
+                    assert tokens_b
 
                     instances.append(
                         TokenInstance(tokens_a, tokens_b, int(is_random_next)))
-                    # print(instances[-1])
+                                # print(instances[-1])
                 current_chunk = []
                 current_length = 0
             i += 1
@@ -269,7 +266,7 @@ class CleanBodyDataCreator(PretrainingDataCreator):
         documents = []
         instances = []
         with open(path, encoding='utf-8') as fd:
-            for i, line in enumerate(tqdm(fd)):
+            for line in tqdm(fd):
                 line = line.replace('\n', '')
                 url, cleanbody, rand_int = line.rstrip("\n").split("\t")
                 cleanbody = cleanbody.replace("#TAB#", " ").replace(
@@ -317,7 +314,7 @@ class WikiNBookCorpusPretrainingDataCreator(PretrainingDataCreator):
         instances = []
         with open(path, encoding='utf-8') as fd:
             document = []
-            for i, line in enumerate(tqdm(fd)):
+            for line in tqdm(fd):
                 line = line.replace('\n', '')
                 # document = line
                 # if len(document.split("<sep>")) <= 3:
@@ -361,7 +358,7 @@ class WikiPretrainingDataCreator(PretrainingDataCreator):
         instances = []
         with open(path, encoding='utf-8') as fd:
             document = []
-            for i, line in enumerate(tqdm(fd)):
+            for line in tqdm(fd):
                 line = line.replace('\n', '')
                 # document = line
                 # if len(document.split("<sep>")) <= 3:

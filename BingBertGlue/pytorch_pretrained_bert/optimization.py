@@ -22,15 +22,11 @@ from torch.nn.utils import clip_grad_norm_
 
 
 def warmup_cosine(x, warmup=0.002):
-    if x < warmup:
-        return x / warmup
-    return 0.5 * (1.0 + torch.cos(math.pi * x))
+    return x / warmup if x < warmup else 0.5 * (1.0 + torch.cos(math.pi * x))
 
 
 def warmup_constant(x, warmup=0.002):
-    if x < warmup:
-        return x / warmup
-    return 1.0
+    return x / warmup if x < warmup else 1.0
 
 
 def warmup_linear(x, warmup=0.002):
@@ -76,9 +72,7 @@ def warmup_exp_decay_poly(global_step,
                           warm_degree=1.5,
                           degree=2.0):
     x = global_step / total_steps
-    if x < warmup:
-        return (x / warmup)**warm_degree
-    return (1.0 - x)**degree
+    return (x / warmup)**warm_degree if x < warmup else (1.0 - x)**degree
 
 
 SCHEDULES = {
@@ -117,25 +111,17 @@ class BertAdam(Optimizer):
                  weight_decay=0.01,
                  max_grad_norm=1.0):
         if lr is not required and lr < 0.0:
-            raise ValueError(
-                "Invalid learning rate: {} - should be >= 0.0".format(lr))
+            raise ValueError(f"Invalid learning rate: {lr} - should be >= 0.0")
         if schedule not in SCHEDULES:
-            raise ValueError("Invalid schedule parameter: {}".format(schedule))
-        if not 0.0 <= warmup < 1.0 and not warmup == -1:
-            raise ValueError(
-                "Invalid warmup: {} - should be in [0.0, 1.0[ or -1".format(
-                    warmup))
+            raise ValueError(f"Invalid schedule parameter: {schedule}")
+        if not 0.0 <= warmup < 1.0 and warmup != -1:
+            raise ValueError(f"Invalid warmup: {warmup} - should be in [0.0, 1.0[ or -1")
         if not 0.0 <= b1 < 1.0:
-            raise ValueError(
-                "Invalid b1 parameter: {} - should be in [0.0, 1.0[".format(
-                    b1))
+            raise ValueError(f"Invalid b1 parameter: {b1} - should be in [0.0, 1.0[")
         if not 0.0 <= b2 < 1.0:
-            raise ValueError(
-                "Invalid b2 parameter: {} - should be in [0.0, 1.0[".format(
-                    b2))
-        if not e >= 0.0:
-            raise ValueError(
-                "Invalid epsilon value: {} - should be >= 0.0".format(e))
+            raise ValueError(f"Invalid b2 parameter: {b2} - should be in [0.0, 1.0[")
+        if e < 0.0:
+            raise ValueError(f"Invalid epsilon value: {e} - should be >= 0.0")
         defaults = dict(lr=lr,
                         schedule=schedule,
                         warmup=warmup,
@@ -170,10 +156,7 @@ class BertAdam(Optimizer):
             closure (callable, optional): A closure that reevaluates the model
                 and returns the loss.
         """
-        loss = None
-        if closure is not None:
-            loss = closure()
-
+        loss = closure() if closure is not None else None
         for group in self.param_groups:
             for p in group['params']:
                 if p.grad is None:

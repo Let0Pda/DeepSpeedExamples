@@ -25,10 +25,7 @@ class FocalLoss(nn.Module):
         if alpha is None:
             self.alpha = torch.ones(class_num, 1)
         else:
-            if isinstance(alpha, Variable):
-                self.alpha = alpha
-            else:
-                self.alpha = Variable(alpha)
+            self.alpha = alpha if isinstance(alpha, Variable) else Variable(alpha)
         self.gamma = gamma
         self.class_num = class_num
         self.size_average = size_average
@@ -53,8 +50,4 @@ class FocalLoss(nn.Module):
 
         batch_loss = -alpha * (torch.pow((1 - probs), self.gamma)) * log_p
 
-        if self.size_average:
-            loss = batch_loss.mean()
-        else:
-            loss = batch_loss.sum()
-        return loss
+        return batch_loss.mean() if self.size_average else batch_loss.sum()
